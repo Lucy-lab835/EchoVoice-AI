@@ -1,0 +1,6 @@
+{
+  "name": "Natural English TTS",
+  "description": "Convert English text to high-quality, natural-sounding human speech using Gemini AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

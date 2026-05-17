@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --color-primary: #4F46E5;
+  --color-primary-hover: #4338CA;
+  --color-bg-app: #F8FAFC;
+  --color-card: #FFFFFF;
+  --color-border-subtle: #E2E8F0;
+  --color-text-main: #1E293B;
+  --color-text-muted: #64748B;
+}
+
+body {
+  @apply bg-bg-app text-text-main font-sans antialiased;
+  margin: 0;
+  overflow: hidden; /* Main container handles scrolling */
+}
+
+.glass-card {
+  @apply bg-card border border-border-subtle rounded-2xl shadow-sm;
+}
+
+.app-container {
+  @apply flex flex-col h-screen w-full overflow-hidden;
+}
+
+.main-layout {
+  @apply flex flex-1 overflow-hidden;
+}
+
+.content-area {
+  @apply flex-1 p-8 flex flex-col gap-6 overflow-y-auto;
+}
+
+.sidebar {
+  @apply w-80 bg-card border-l border-border-subtle p-8 flex flex-col gap-8 shrink-0 overflow-y-auto;
+}
+
+.header {
+  @apply h-16 bg-card border-b border-border-subtle flex items-center justify-between px-8 shrink-0;
+}
+
+.footer {
+  @apply h-28 bg-card border-t border-border-subtle flex items-center px-8 gap-8 shrink-0;
+}
