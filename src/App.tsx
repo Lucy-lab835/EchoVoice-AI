@@ -22,6 +22,7 @@ export default function App() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null);
   
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -36,6 +37,26 @@ export default function App() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+        const response = await fetch(`${baseUrl}api/health`);
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          setIsBackendHealthy(data.status === 'ok');
+        } else {
+          setIsBackendHealthy(false);
+        }
+      } catch (err) {
+        console.error("Backend health check failed:", err);
+        setIsBackendHealthy(false);
+      }
+    };
+    checkHealth();
+  }, []);
+
   const handleGenerate = async () => {
     if (!text.trim()) return;
 
@@ -46,13 +67,22 @@ export default function App() {
     setCurrentTime(0);
 
     try {
-      const response = await fetch('/api/tts', {
+      const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+      const response = await fetch(`${baseUrl}api/tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, voiceName: selectedVoice }),
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get('content-type');
+      let data;
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const textResponse = await response.text();
+        console.error("Non-JSON response received:", textResponse);
+        throw new Error(`Unexpected server response (${response.status}). This often happens on static hosts like GitHub Pages where the backend is unavailable.`);
+      }
 
       if (!response.ok) {
         if (response.status === 429) {
@@ -219,6 +249,23 @@ export default function App() {
               placeholder="Type or paste your English text here..."
               className="flex-1 w-full bg-transparent text-xl font-normal leading-relaxed resize-none focus:outline-none placeholder:text-slate-200 text-slate-700 font-sans"
             />
+            {isBackendHealthy === false && (
+              <div className="mb-4 p-4 bg-amber-50 border border-amber-100 rounded-xl text-amber-900 text-xs leading-relaxed">
+                <p className="font-bold flex items-center gap-2 mb-2 text-amber-700">
+                  <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                  這是一個靜態頁面 (Static Host Detected)
+                </p>
+                <p className="mb-2">GitHub Pages 僅支援靜態顯示。語音合成功能需要後端伺服器 (Node.js) 才能運作。</p>
+                <div className="space-y-2 bg-white/50 p-2 rounded-lg border border-amber-200">
+                  <p><b>解決方法：</b></p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>請使用 AI Studio 的 <b>Shared App URL</b> (支援後端)。</li>
+                    <li>在 AI Studio 的 <b>Settings</b> &gt; <b>Secrets</b> 中新增 <code>GEMINI_API_KEY</code>。</li>
+                    <li>若要部署到外部，請選擇支援 Node.js 的平台 (如 Vercel, Render 或 Cloud Run)。</li>
+                  </ul>
+                </div>
+              </div>
+            )}
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-500 text-xs flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />

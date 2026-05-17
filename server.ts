@@ -42,7 +42,7 @@ async function startServer() {
   app.post("/api/tts", async (req, res) => {
     try {
       if (!process.env.GEMINI_API_KEY) {
-        throw new Error("GEMINI_API_KEY is not configured in the environment");
+        throw new Error("GEMINI_API_KEY is missing. Please add it in AI Studio 'Settings' -> 'Secrets' or provide it in your production environment variables.");
       }
 
       const { text, voiceName = "Kore" } = req.body;
