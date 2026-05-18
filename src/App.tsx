@@ -67,41 +67,41 @@ export default function App() {
     setCurrentTime(0);
 
     try {
-      const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+      const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+      const response = await fetch(`${baseUrl}api/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voiceName: selectedVoice }),
+      });
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text }] }],
-            generationConfig: {
-              response_modalities: ['AUDIO'],
-              speech_config: {
-                voice_config: {
-                  prebuilt_voice_config: { voice_name: selectedVoice }
-                }
-              }
-            }
-          })
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || 'Failed to generate audio');
+      const contentType = response.headers.get('content-type');
+      let data;
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const textResponse = await response.text();
+        console.error("Non-JSON response received:", textResponse);
+        throw new Error(`Unexpected server response (${response.status}). This often happens on static hosts like GitHub Pages where the backend is unavailable.`);
       }
 
-      const pcmData = atob(data.candidates[0].content.parts[0].inlineData.data);
-      const wavHeader = createWavHeader(pcmData.length, 24000);
-      const wavBlob = new Blob(
-        [wavHeader, Uint8Array.from(pcmData, c => c.charCodeAt(0))],
-        { type: 'audio/wav' }
-      );
-      setAudioUrl(URL.createObjectURL(wavBlob));
+      if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error('Too many requests. Please wait a moment before trying again.');
+        }
+        if (data.error?.includes("blocked") || data.error?.includes("candidates")) {
+          throw new Error('The AI was unable to generate this voiceover. This may be due to content restrictions or temporary service limits. Please try a different text or voice.');
+        }
+        throw new Error(data.error || 'Failed to generate audio');
+      }
 
+      // Gemini TTS returns raw PCM (16-bit, mono, 24kHz)
+      // To play it easily, we can wrap it in a WAV header
+      const pcmData = atob(data.audio);
+      const wavHeader = createWavHeader(pcmData.length, 24000);
+      
+      const wavBlob = new Blob([wavHeader, Uint8Array.from(pcmData, c => c.charCodeAt(0))], { type: 'audio/wav' });
+      const url = URL.createObjectURL(wavBlob);
+      setAudioUrl(url);
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'An unexpected error occurred');
